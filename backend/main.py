@@ -5,7 +5,9 @@ from fastapi.middleware.cors import CORSMiddleware
 import random
 import json
 import os
+import uvicorn  #這個是部屬到Zeaber的
 from database import load_recipes
+
 
 app = FastAPI(
     title="食譜查詢 API",
@@ -14,10 +16,41 @@ app = FastAPI(
 )
 
 
+
+## 跨域設定：讓前端能順利存取
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], 
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# =========================
+# 檔案路徑設定 (支援 Zeabur Volume)
+# =========================
+# 優先搜尋 Zeabur 的持久化空間 /data
+STORAGE_PATH = "/data" if os.path.exists("/data") else "."
+FAVORITE_FILE = os.path.join(STORAGE_PATH, "favorites.json")
+
+
 # =========================
 # 載入食譜資料
 # =========================
 recipes = load_recipes()
+
+
+@app.get("/data")
+def get_info():
+    return {"msg": "連線成功！這是來自後端的資料"}
+
+
+@app.get("/data")
+def get_info():
+    return {"msg": "連線成功！這是來自後端的資料"}
+
+
+
 
 # =========================
 # 收藏功能（JSON 儲存）
@@ -193,11 +226,9 @@ def add_favorite(
 
 @app.get("/favorite", summary="查看收藏的食譜")
 def list_favorites():
-    result = [r for r in recipes if r["name"] in favorites]
-    return {
-        "count": len(result),
-        "favorites": result
-    }
+    # 只需要在回傳時，用列表推導式加上屬性即可
+    result = [{**r, "is_favorite": True} for r in recipes if r["name"] in favorites]
+    return {"count": len(result), "favorites": result}
 
 
 @app.delete("/favorite", summary="取消收藏")
@@ -209,8 +240,15 @@ def remove_favorite(
         save_favorites(favorites)
         return {"message": f"已取消收藏：{name}"}
 
-<<<<<<< HEAD
+
     return {"error": f"{name} 不在收藏清單中"}
-=======
-    return {"error": f"{name} 不在收藏清單中"}
->>>>>>> 5320946 (Front-end)
+
+#這個是部屬到Zeaber的
+if __name__ == "__main__":
+    # Zeabur 預設通常會給 PORT 環境變數，沒有的話用 8080
+    port = int(os.environ.get("PORT", 8080))
+    uvicorn.run(app, host="0.0.0.0", port=port)
+
+
+
+

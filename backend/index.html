@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>🍳 進階多食材食譜助手</title>
+    <style>
+        :root { --primary: #ff6b6b; --secondary: #4ecdc4; --accent: #ff9f43; --bg: #f7f9fc; }
+        body { font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: var(--primary); }
+        
+        .section { background: #fff; border: 1px solid #eee; padding: 20px; border-radius: 12px; margin-bottom: 20px; }
+        .random-section { background: #fff4e6; border: 2px dashed var(--accent); text-align: center; }
+        
+        /* 搜尋區塊樣式 */
+        .search-controls { display: flex; flex-direction: column; gap: 15px; }
+        .input-group { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+        input, select { padding: 10px; border: 2px solid #ddd; border-radius: 8px; outline: none; width: 140px;}
+        
+        button { padding: 10px 20px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        button:hover { opacity: 0.8; }
+        .btn-add { background: var(--secondary); margin-top: 5px; }
+        .btn-search { background: var(--primary); font-size: 1.1em; width: 100%; }
+
+        /* 卡片與標籤樣式 */
+        .recipe-card { background: #fff; border: 1px solid #ddd; padding: 20px; margin-bottom: 20px; border-radius: 12px; }
+        .recipe-header { display: flex; justify-content: space-between; align-items: center; }
+        .tag { background: var(--secondary); color: white; padding: 3px 8px; border-radius: 5px; font-size: 0.8em; margin-left: 10px; }
+        .tag-dessert { background-color: #f1a2d0 !important; } /* 甜點粉色 */
+
+        .content-label { font-weight: bold; color: var(--primary); margin-top: 15px; display: block; border-left: 4px solid var(--primary); padding-left: 8px; }
+        .steps-text { white-space: pre-wrap; background: #f9f9f9; padding: 10px; border-radius: 8px; margin-top: 5px; line-height: 1.6; }
+        
+        .fav-btn { background: none; color: #ccc; font-size: 28px; border: none; cursor: pointer; transition: 0.2s; }
+        .fav-btn.active { color: var(--primary); }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🍳 進階多食材食譜助手</h1>
+
+    <div class="section random-section">
+        <button style="background: var(--accent);" onclick="getRandomRecipe()">🎲 隨機抽一道菜！</button>
+        <div id="random-display" style="margin-top: 15px;"></div>
+    </div>
+    
+    <div class="section">
+        <div class="search-controls">
+            <div class="input-group">
+                <label>選擇模式：</label>
+                <select id="search-mode" onchange="toggleInputMode()">
+                    <option value="all">所有分類搜尋</option>
+                    <option value="home">🏠 家常菜搜尋</option>
+                    <option value="dessert">🍰 甜點搜尋</option>
+                    <option value="name">🔍 依食譜名稱</option>
+                    <option value="favorite">❤️ 我的收藏</option>
+                </select>
+            </div>
+
+            <div id="ingredients-container">
+                <div class="input-group" id="ingredients-inputs">
+                    <input name="ingredient" placeholder="輸入食材 (例: 蛋)">
+                </div>
+                <div style="margin-top: 10px; display: flex; gap: 10px;"></div>
+                <button type="button" class="btn-add" id="add-btn"    onclick="addIngredient()"    style="background-color: #6d80b2;">＋ 新增食材欄位</button>
+                <button type="button"                 id="remove-btn" onclick="removeIngredient()" style="background-color: #baa864;">－ 減少食材欄位</button>
+            </div>
+            
+            <button class="btn-search" onclick="search()">立即查詢好料</button>
+        </div>
+    </div>
+
+    <div id="recipe-list"></div>
+</div>
+
+<script>
+    const API_BASE = window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost"? "http://127.0.0.1:8000"
+        : "https://127.0.0.1:8000.zeabur.app";
+
+    // 動態新增輸入框
+   // 動態新增輸入框 (限制總數不超過 5 個)
+
+function addIngredient() {
+    const container = document.getElementById("ingredients-inputs");
+    const currentInputs = document.getElementsByName("ingredient");
+    // 木能超過5個欄位
+    if (currentInputs.length < 5) {
+        const input = document.createElement("input");
+        input.name = "ingredient";
+        input.placeholder = "輸入食材";
+        input.style.marginTop = "5px";
+        container.appendChild(input);
+    }
+    checkInputLimit();
+}
+
+// 移除最後一個食材欄位
+function removeIngredient() {
+    const container = document.getElementById("ingredients-inputs");
+    const currentInputs = document.getElementsByName("ingredient");
+
+    // 至少保留一個欄位
+    if (currentInputs.length > 1) {
+        container.removeChild(container.lastChild);
+    } 
+    checkInputLimit();
+    search(); // 移除後自動重新搜尋，保持結果同步
+}
+
+// 檢查輸入框數量並控制按鈕狀態
+function checkInputLimit() {
+    const addBtn = document.getElementById("add-btn");
+    const removeBtn = document.getElementById("remove-btn");
+    const currentInputs = document.getElementsByName("ingredient");
+    const count = currentInputs.length;
+
+    // --- 檢查「新增」按鈕 (上限 5) ---
+    if (currentInputs.length >= 5) {
+        // 變暗並禁用
+        addBtn.disabled = true;
+        addBtn.style.backgroundColor = "#ccc"; // 變暗
+        addBtn.style.cursor = "not-allowed";   // 禁止觸發
+        addBtn.innerText = "已達 5 個上限";
+    } else {
+        // 恢復原狀 (青綠色)
+        addBtn.disabled = false;
+        addBtn.style.backgroundColor = "#6d80b2"; // 恢復深顏色
+        addBtn.style.cursor = "pointer";
+        addBtn.innerText = "＋ 新增食材欄位";
+    }
+    // --- 檢查「減少」按鈕 (下限 1) ---
+    if (count <= 1) {
+        // 變暗並禁用
+        removeBtn.disabled = true;
+        removeBtn.style.backgroundColor = "#ccc"; // 變暗
+        removeBtn.style.cursor = "not-allowed";   // 禁止觸發
+        removeBtn.innerText = "最少保留一欄";
+    } else {
+        // 恢復原狀 ()
+        removeBtn.disabled = false;
+        removeBtn.style.backgroundColor = "#baa864"; // 恢復深顏色
+        removeBtn.style.cursor = "pointer";
+        removeBtn.innerText = "－ 減少食材欄位";
+    }
+
+    
+}
+
+
+
+    // 依模式切換顯示 (名稱模式不顯示「新增食材」)
+function toggleInputMode() {
+    const mode = document.getElementById('search-mode').value;
+    const addBtn = document.getElementById('add-btn');      // 取得增加按鈕
+    const removeBtn = document.getElementById('remove-btn'); // 取得減少按鈕
+    const inputs = document.getElementsByName('ingredient');
+    
+    if (mode === 'name' || mode === 'favorite') {
+        addBtn.style.display = 'none';          // 隱藏新增按鈕
+        removeBtn.style.display = 'none';       // 隱藏減少按鈕
+        inputs[0].placeholder = "輸入食譜名稱";
+        while(inputs.length > 1) inputs[1].remove();
+    } else {
+        addBtn.style.display = 'inline-block';
+        removeBtn.style.display = 'inline-block';
+        inputs[0].placeholder = "輸入食材 (例: 蛋)";
+    }
+    
+    // 重置後檢查一次按鈕狀態
+    checkInputLimit();
+    search();
+}
+
+    async function search() {
+        const mode = document.getElementById('search-mode').value;
+        const inputs = document.getElementsByName('ingredient');
+        const listDiv = document.getElementById('recipe-list');
+        listDiv.innerHTML = "🔍 搜尋中...";
+
+        let url;
+        if (mode === 'favorite') {
+            url = `${API_BASE}/favorite`;
+        } else if (mode === 'name') {
+            const val = inputs[0].value.trim();
+            url = val ? `${API_BASE}/detail?name=${encodeURIComponent(val)}` : `${API_BASE}/list`;
+        } else {
+            // 多食材模式：構建 URL 參數
+            url = `${API_BASE}/search?`;
+            if (mode !== 'all') url += `category=${mode}&`;
+            
+            // 抓取所有 input 的值並拼接到 URL
+            for (let input of inputs) {
+                if (input.value.trim()) {
+                    url += `ingredient=${encodeURIComponent(input.value.trim())}&`;
+                }
+            }
+        }
+
+        try {
+            const res = await fetch(url);
+            const data = await res.json();
+            let results = data.results || data.recipes || data.favorites || (data.name ? [data] : []);
+            
+            // 如果是在收藏模式下搜尋關鍵字
+            if (mode === 'favorite' && inputs[0].value.trim()) {
+                results = results.filter(r => r.name.includes(inputs[0].value.trim()));
+            }
+            renderRecipes(results, 'recipe-list');
+        } catch (e) {
+            listDiv.innerHTML = "❌ 無法連線至後端";
+        }
+    }
+
+    function renderRecipes(recipes, targetId) {
+        const targetDiv = document.getElementById(targetId);
+        if (!recipes || recipes.length === 0 || recipes[0].error) {
+            targetDiv.innerHTML = "<p style='text-align:center;'>找不到相關食譜，換個關鍵字試試！</p>";
+            return;
+        }
+
+        targetDiv.innerHTML = recipes.map(r => {
+            const isDessert = r.category && (r.category.includes("甜點") || r.category.toLowerCase().includes("dessert"));
+            const tagClass = isDessert ? 'tag tag-dessert' : 'tag';
+            return `
+                <div class="recipe-card">
+                    <div class="recipe-header">
+                        <h3 style="margin:0;">${r.name} <span class="${tagClass}">${r.category}</span></h3>
+                        <button class="fav-btn ${r.is_favorite ? 'active' : ''}" 
+                                onclick="toggleFavorite('${r.name}', ${r.is_favorite})">❤</button>
+                    </div>
+                    <span class="content-label">🛒 準備食材</span>
+                    <p>${r.ingredients ? r.ingredients.join('、') : ''}</p>
+                    <span class="content-label">👨‍🍳 料理步驟</span>
+                    <div class="steps-text">${r.steps || '暫無步驟'}</div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    async function toggleFavorite(name, isFav) {
+        const method = isFav ? 'DELETE' : 'POST';
+        await fetch(`${API_BASE}/favorite?name=${encodeURIComponent(name)}`, { method: method });
+        
+        // 全域刷新
+        search();
+        
+        // 如果隨機區正顯示該食譜，同步它
+        const randomDiv = document.getElementById('random-display');
+        if (randomDiv.innerHTML.includes(name)) {
+            const res = await fetch(`${API_BASE}/detail?name=${encodeURIComponent(name)}`);
+            const updated = await res.json();
+            renderRecipes([updated], 'random-display');
+        }
+    }
+
+    async function getRandomRecipe() {
+        const res = await fetch(`${API_BASE}/random`);
+        const data = await res.json();
+        renderRecipes([data], 'random-display');
+    }
+
+    window.onload = search;
+</script>
+</body>
+</html>
+
+
+
+
