@@ -13,27 +13,7 @@ app = FastAPI(
     description="支援分類、複選食材、模糊搜尋，並提供收藏功能的食譜 API"
 )
 
-<<<<<<< HEAD
-=======
 
-# 這段一定要加，前端才拿得到資料
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"], 
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-@app.get("/data")
-def get_info():
-    return {"msg": "連線成功！這是來自後端的資料"}
-
-
-@app.get("/data")
-def get_info():
-    return {"msg": "連線成功！這是來自後端的資料"}
-
->>>>>>> 5320946 (Front-end)
 # =========================
 # 載入食譜資料
 # =========================
