@@ -12,15 +12,27 @@
         .section { background: #fff; border: 1px solid #eee; padding: 20px; border-radius: 12px; margin-bottom: 20px; }
         .random-section { background: #fff4e6; border: 2px dashed var(--accent); text-align: center; }
         
-        /* 搜尋區塊樣式 */
+        /* 選擇模式樣式 */
         .search-controls { display: flex; flex-direction: column; gap: 15px; }
         .input-group { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-        input, select { padding: 10px; border: 2px solid #ddd; border-radius: 8px; outline: none; width: 140px;}
+
+        /* 通用 input 與 select 樣式 (移除 width) */
+        input, select { padding: 10px; border: 2px solid #ddd; border-radius: 8px; outline: none; }
         
+
+        /*單獨設定選擇模式寬度*/
+        #search-mode{width: 180px;}
+
+        /*單獨設定食材輸入欄寬度*/
+        #ingredients-inputs input{width: 120px;}
+
         button { padding: 10px 20px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; }
         button:hover { opacity: 0.8; }
         .btn-add { background: var(--secondary); margin-top: 5px; }
         .btn-search { background: var(--primary); font-size: 1.1em; width: 100%; }
+
+        /*輸入欄樣式*/
+        
 
         /* 卡片與標籤樣式 */
         .recipe-card { background: #fff; border: 1px solid #ddd; padding: 20px; margin-bottom: 20px; border-radius: 12px; }
@@ -33,6 +45,10 @@
         
         .fav-btn { background: none; color: #ccc; font-size: 28px; border: none; cursor: pointer; transition: 0.2s; }
         .fav-btn.active { color: var(--primary); }
+
+        /*提示小字*/
+        .hint-text {color: #999;font-size: 14px; margin-top: 8px;margin-bottom: 12px;display: block; /* 確保它換行顯示 */
+}
     </style>
 </head>
 <body>
@@ -67,9 +83,28 @@
                 <button type="button"                 id="remove-btn" onclick="removeIngredient()" style="background-color: #baa864;">－ 減少食材欄位</button>
             </div>
 
-            <p style="color: #888; font-size: 0.85rem; margin: 10px 0; text-align: center;">
-                提示：可以試試輸入「雞蛋、雞胸肉、青花菜、洋蔥」等食材
-            </p>
+            <details class="hint-container">
+                <summary>查看搜尋提示</summary>
+                    <div class="hint-text">
+                📌 甜點食材可選：<br> 
+                                 &nbsp;&nbsp;🍓 水果：草莓、香蕉、蘋果、芒果、酪梨、藍莓、地瓜、南瓜 <br>
+                                 &nbsp;&nbsp;🥛 乳製品：鮮奶、豆漿、優格、乳酪 <br>
+                                 &nbsp;&nbsp;🥚 蛋類：雞蛋、蛋黃 <br>
+                                 &nbsp;&nbsp;🍯 甜味：蜂蜜、砂糖、黑糖、冰糖、楓糖漿 <br>
+                                 &nbsp;&nbsp;🍫 烘焙：可可粉、巧克力豆、肉桂粉、泡打粉、吉利丁 <br>
+                                 &nbsp;&nbsp;🥣 穀類：燕麥、紫米、糯米粉、低筋、中筋、餅乾 <br>
+                                 &nbsp;&nbsp;🥑 豆類：豆腐、豆渣、紅豆<br>
+
+                📌 家常菜食材可選：<br> 
+                                   &nbsp;&nbsp;🥬 蔬菜：蔥、蒜、洋蔥、青江菜、番茄 <br>
+                                   &nbsp;&nbsp;🥩 肉類：雞肉、豬肉、牛肉、絞肉 <br>
+                                   &nbsp;&nbsp;🐟 海鮮：蝦、魚肉、鮪魚罐頭 <br>
+                                   &nbsp;&nbsp;🍳 基礎：雞蛋、醬油、鹽、糖、油 <br>
+                                   &nbsp;&nbsp;🍚 主食：白飯、麵條、米粉<br>
+                    </div>
+            </details>
+            
+            
             
             <button class="btn-search" onclick="search()">立即查詢好料</button>
         </div>
